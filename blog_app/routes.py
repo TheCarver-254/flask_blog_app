@@ -1,7 +1,13 @@
+import os
+
+import secrets #to generate random names
+
+from PIL import Image
+
 from flask import render_template, url_for, flash, redirect, request #add import for : request
 
 from blog_app import app, db, bcrypt #added import for : db, bcrypt
-from blog_app.forms  import RegistrationForm, LoginForm
+from blog_app.forms  import RegistrationForm, LoginForm, UpdateAccountForm #added import for :UpdateAccountForm
 
 #import the database models here
 from blog_app.models import User, Post
@@ -97,8 +103,56 @@ def logout():
     return redirect(url_for('home'))
 
 
+#save user uploaded image
+def save_picture(form_picture):
+    random_hex = secrets.token_hex(8)
+    _, f_ext = os.path.splitext(form_picture.filename)
+    picture_fn = random_hex + f_ext #picture file name
+    picture_path = os.path.join(app.root_path, 'static/profile_pics', picture_fn)
+    
+    # #automatically resize images before being saved
+    # output_size = (125, 125)
+    # i = Image.open(form_picture)
+    # i.thumbnail(output_size)
+    # i.save(picture_path)
+
+    form_picture.save(picture_path)
+
+    return picture_fn
+
+
+
+
 # account route for only the logged in users
-@app.route("/account")
+@app.route("/account", methods=['GET', 'POST'])
 @login_required #restrict this page to only logged in users
 def account():
-    return render_template('account.html', title='Account')
+    form = UpdateAccountForm()
+
+    # # #update form username and email if our form is valid
+    if form.validate_on_submit():
+
+        #check if picture exist
+        if form.picture.data:
+            #save picture
+            picture_file = save_picture(form.picture.data)
+            current_user.image_file = picture_file #update profile picture
+
+        current_user.username = form.username.data
+        current_user.email = form.email.data
+        db.session.commit()
+
+
+
+    #     #flash message
+        flash('Your account has been updated !', 'success')
+        return redirect(url_for('account'))
+
+    # # # # populate the form with current user data
+    elif request.method == 'GET':
+        form.username.data = current_user.username
+        form.email.data = current_user.email
+
+    image_file = url_for('static', filename='profile_pics/' + current_user.image_file) #set up user profile pic
+    return render_template('account.html', title='Account', 
+                            image_file=image_file, form=form) #add code to :pass the image_file, and the form
