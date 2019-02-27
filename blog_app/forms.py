@@ -1,6 +1,8 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
-from wtforms.validators import DataRequired, Length, Email, EqualTo
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+
+from blog_app.models import User #add User model
 
 
 class RegistrationForm(FlaskForm):
@@ -14,9 +16,28 @@ class RegistrationForm(FlaskForm):
     submit = SubmitField('Sign Up')
 
 
+    #create a custom form validation
+
+    #check if username exist in the database 
+    def validate_username(self, username):
+
+        user = User.query.filter_by(username=username.data).first()
+        if user:
+            raise ValidationError(' That username already exist. Please choose another username')
+
+
+
+     #check if email exist in the database 
+    def validate_email(self, email):
+
+        user = User.query.filter_by(email=email.data).first()
+        if user:
+            raise ValidationError(' That email already exist. Please choose another email')
+
+
 class LoginForm(FlaskForm):
     email = StringField('Email',
                         validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
-    submit = SubmitField('Login')
+    submit   = SubmitField('Login')
